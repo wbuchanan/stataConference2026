@@ -1,0 +1,10 @@
+# Stata batch runs (stata -b do examples.do) write a log next to the do-file
+*.log
+*.smcl
+# Editor and operating-system artefacts
+.DS_Store
+# Python caches, from any verification script run in the tree
+__pycache__/
+.pytest_cache/
+.idea/
+

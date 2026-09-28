@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+	<meta charset="utf-8">
+
+	<title>Creating interactive dashboards in Stata with dash</title>
+
+	<meta name="description" content="Creating interactive dashboards in Stata with dash">
+	<meta name="author" content="Billy Buchanan">
+
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reset.css">
+	<!--
+	onerror="this.onerror=null;this.href='vendor/reset.css';">
+	-->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.css">
+	<!--
+	onerror="this.onerror=null;this.href='vendor/reveal.css';">
+	-->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/theme/black.css" id="theme">
+	<!--
+	onerror="this.onerror=null;this.href='vendor/theme/black.css';">
+	-->
+	<!-- Theme used for syntax highlighting of code -->
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/monokai.css">
+		<!--
+		onerror="this.onerror=null;this.href='vendor/plugin/highlight/monokai.css';">
+		-->
+	<!--
+		Deck-specific styling (section 05). Everything else is the stock black theme.
+
+		reveal.css caps a code block at max-height: 400px, which was sized for the
+		960x700 default deck. This deck's config space is 1920x1080 (see Reveal.initialize
+		below), so the cap is raised. A block taller than the cap scrolls to whichever
+		data-line-numbers step is active -- that is how the four example code slides walk
+		through a whole examples.do block without shrinking the font.
+		Reference: https://revealjs.com/code/ (line numbers, highlights and step-through).
+	-->
+	<style>
+		.reveal pre { width: 96%; }
+		.reveal pre code { max-height: 860px; }
+		.reveal pre.example-code { font-size: 0.5em; }
+		.reveal pre.oneliner { font-size: 0.55em; margin: 0.25em auto; }
+		.reveal p.codelabel { font-size: 0.7em; width: 96%; margin: 0.3em auto 0; text-align: left; }
+		.reveal table.parity { font-size: 0.62em; }
+		.reveal table.parity th, .reveal table.parity td { vertical-align: top; }
+		.reveal ol.pipeline { font-size: 0.85em; }
+		.reveal ul.tight { font-size: 0.9em; }
+	</style>
+</head>
+
+<body>
+
+<div class="reveal">
+
+	<div class="slides">
+
+		<section>
+			<h2>Creating interactive dashboards in Stata with dash</h2>
+			<h4><a href="https://github.com/wbuchanan" target="_blank">Billy Buchanan</a></h4>
+			<h4>Senior Research Scientist</h4>
+			<h4><a href="https://www.sagcorp.com" target="_blank">SAG Corporation</a></h4>
+			<h4><a href="https://wbuchanan.github.io/stataConference2026">https://wbuchanan.github.io/stataConference2026</a></h4>
+		</section>
+
+		<section>
+			<!-- BLUF -->
+			<section>
+				<ul>
+					<li><code>dash</code> is intended as a drop-in replacement for <code>twoway</code>, with some limitations</li>
+					<li>Filters, brushing &amp; linking, Bootstrap.js, several schemes, dozens of graph types, and more supported</li>
+					<li>Output a standalone HTML file with everything needed<sup>*</sup></li>
+					<li>Possibly the first Stata command built using an AI coding assistant</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>Wanted to ensure the syntax would be as easy to use and familiar as possible</li>
+						<li>Dashboards are intended for organization and exploration, so I wanted to make sure this could do both</li>
+						<li>With a few exceptions, a standalone HTML file can support many needs</li>
+						<li>However, some filter functionality will only be supported via a Bokeh server</li>
+					</ul>
+				</aside>
+			</section>
+
+			<!-- Motivation -->
+			<section data-autoslide="2000">
+				<h2>Motivation</h2>
+			</section>
+			<section>
+				<ul>
+					<li>Several attendees at previous Stata Conferences have requested dashboard tooling</li>
+					<li>Last year, a few attendees asked about AI coding assistance and/or integration</li>
+					<li>Combining both in a single project seemed like a unique and interesting challenge</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>Thought about trying to build something like this in the past but never made it too far</li>
+						<li>Developing photography planning application with coding assistant</li>
+						<li>Developing image processing software with coding assistant</li>
+						<li>Lightbulb: take what I learned from the photography stuff and build a dashboarding solution</li>
+					</ul>
+				</aside>
+			</section>
+
+		</section>
+
+
+		<section>
+			<section data-autoslide="2000">
+				<h2>Creating dash</h2>
+			</section>
+
+			<!-- Design Decisions -->
+			<section>
+				<h3>Design Decisions</h3>
+				<ul class="tight">
+					<li>Building directly in Stata would be less useful to more users</li>
+					<li>Java vs <a href="https://pyviz.org/tools.html" target="_blank">Python</a></li>
+					<li><a href="https://streamlit.io/" target="_blank">Streamlit</a> vs <a href="https://bokeh.org/" target="_blank">Bokeh</a></li>
+					<li>Mirror <code>twoway</code>'s behavior as close as possible</li>
+					<li>Provide some additional features common to dashboards</li>
+					<li>Identify which AI Coding assistant would provide the best results</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>Talk about libhtml and libd3 for why direct implementation would not be useful</li>
+						<li>Java has superior support for low-level visualization, but that would require significantly more time/effort</li>
+						<li>Python does not have the same native support for low-level visualization, but has a large number of data visualization libraries that already implement best practices in interactive visualization.</li>
+						<li>Python is also the most widely used programming language, which means AI coding assistants will have had lots of exposure to it.</li>
+						<li>So, the decision came down to which Python library to use.</li>
+						<li>Streamlit is outstanding for developing web applications, but is a much younger library.</li>
+						<li>Bokeh is a significantly more mature library designed specifically for interactive data visualization and dashboard development</li>
+						<li>Other features like KPI cards, filtering, brushing and linking, drill down*, etc...</li>
+						<li>Hand coding this would be a massive task.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<!--
+				A bit about language models
+			-->
+			<section>
+				<h3>A very brief history of language models</h3>
+				<ul class="tight">
+					<li>2014 - seq2seq: Allows variable length input to variable length output
+						(<a href="https://arxiv.org/abs/1409.3215" target="_blank">Sutskever, Vinyals &amp; Le</a>)</li>
+					<li>2015 - attention: Provides a way to encode context in addition to semantics of the tokens
+						(<a href="https://arxiv.org/abs/1409.0473" target="_blank">Bahdanau, Cho &amp; Bengio</a>)</li>
+					<li>2017 - Transformers: Adds positional encoding to attention and computational efficiencies
+						(<a href="https://arxiv.org/abs/1706.03762" target="_blank">Vaswani et al.</a>)</li>
+					<li>The problem I needed to solve was translating Stata to Python</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>Getting to LLMs started a while ago with neural translation models</li>
+						<li>The first somewhat successful approach was seq2seq</li>
+						<li>Fast forward a few years...transformers...starts the acceleration of language models</li>
+						<li>All langauge models rely on vast quantities of text data</li>
+						<li>But at the end of the day, they are all basically gianormous non-linear correlation matrices</li>
+						<li>Less Stata code on the net compared to other languages could make it difficult</li>
+						<li>But documentation added in a retrieval augmented generative model can significantly improve performance.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<!-- Blank Slide with Header -->
+			<section>
+				<h3>How and What to translate</h3>
+				<ul class="tight">
+					<li>Data could be translated using <a href="https://wbuchanan.github.io/StataJSON/" target="_blank"><code>jsonio</code></a> or the <a href="https://www.stata.com/python/api19/" target="_blank">Stata Function Interface</a></li>
+					<li>Parsing Stata commands would likely be easier in Stata</li>
+					<li>Not everything needed a literal translation (e.g., <code>if/in</code> expressions)</li>
+					<li>The biggest translation task would be the graph type declarations and their options</li>
+					<li>The first step was to develop and execute the plan, followed by creating and executing additional plans</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>Unlike many language translation tasks, this work required translating across a couple of languages simultaneously.</li>
+						<li>Data would be translated directly into JavaScript Object Notation, while everything about how to use the data would be translated into Python.</li>
+						<li>The Python library would then generate the HTML, SVG, and JavaScript to render the visualizations.</li>
+						<li>Programming with an AI coding assistant starts the same way hand coding should start: with a clear and well scoped plan.</li>
+						<li>The plan would provide the on-going instructions for the AI coding assistant to follow.</li>
+						<li><b>ALL AI CODING ASSISTANTS LIE</b></li>
+						<li>AI coding assistants behave the way the fundamental assumptions in economic theory say people behave</li>
+						<li>Because their training process is designed to maximize their "reward," they will find the most efficient way possible to obtain the reward, including saying that work is completed even if it isn't</li>
+					</ul>
+				</aside>
+			</section>
+
+		</section>
+
+		<!-- EXAMPLES -->
+		<section>
+			<section data-autoslide="3500">
+				<h2>Examples</h2>
+			</section>
+
+			<section>
+				<h3>nlsw88: the code</h3>
+				<pre class="example-code"><code class="language-stata" data-trim data-line-numbers="1-6|7-30|31-42|43-53" data-examples-lines="54-55,63-66,73-77,79-83,87-91,96-99,105-109,118-129,143-153">
+sysuse nlsw88, clear
+dash clear
+format wage                                       %9.2f
+format ttl_exp tenure                             %9.1f
+format age grade hours                            %9.0f
+format industry occupation union collgrad race    %9.0f
+dash (scatter wage ttl_exp, msize(small))             ///
+     (lfit    wage ttl_exp),                          ///
+    name(g1) title("Hourly wage by total work experience") ///
+    xtitle("Total work experience (years)")           ///
+    ytitle("Hourly wage (USD)")
+dash (scatter wage tenure, msize(small))              ///
+     (lfit    wage tenure),                           ///
+    name(g2) title("Hourly wage by tenure in current job") ///
+    xtitle("Job tenure (years)")                      ///
+    ytitle("Hourly wage (USD)")
+dash (scatter wage grade, msize(small) jitter(3) jitterseed(1988)) ///
+     (lfitci  wage grade),                            ///
+    name(g3) title("Hourly wage by years of schooling")   ///
+    xtitle("Highest grade completed")                 ///
+    ytitle("Hourly wage (USD)")
+dash (histogram wage, bin(40) density)                ///
+     (kdensity  wage),                                ///
+    name(g4) title("Distribution of hourly wages")        ///
+    xtitle("Hourly wage (USD)") ytitle("Density")
+dash (kdensity wage if union == 1)                    ///
+     (kdensity wage if union == 0),                   ///
+    name(g5) title("Wage density: union and nonunion workers") ///
+    xtitle("Hourly wage (USD)") ytitle("Density")     ///
+    legend(label(1 "Union") label(2 "Nonunion"))
+dash kpi count(wage),   name(k1) title("Women")             fmt(%9.0fc) ///
+    subtitle("in the current filters")   update(both)
+dash kpi mean(wage),    name(k2) title("Mean hourly wage")  fmt(%9.2f)  ///
+    subtitle("USD, 1988")                update(both)
+dash kpi median(wage),  name(k3) title("Median hourly wage") fmt(%9.2f) ///
+    subtitle("USD, 1988")                update(filter)
+dash kpi p90(wage),     name(k4) title("90th percentile")   fmt(%9.2f)  ///
+    subtitle("of the hourly wage")       update(filter)
+dash kpi iqr(wage),     name(k5) title("Interquartile range") fmt(%9.2f) ///
+    subtitle("of the hourly wage, USD") update(filter)
+dash kpi count(wage),   name(k6) title("Selected")          fmt(%9.0fc) ///
+    subtitle("box- or lasso-selected women") update(brush)
+dash build,                                                          ///
+    saving("dashboards/nlsw88-filters.html") replace nobrowser        ///
+    title("Young women in the labour force, 1988")                   ///
+    subtitle("NLSW 1988 extract, 2,246 women aged 34 to 46")         ///
+    layout(bs)                                                       ///
+    tabs(Overview: k1 k2 k6 g1 g2 g3 / Distributions: k3 k4 k5 g4 g5) ///
+    filterposition(left)                                             ///
+    filter(industry, type(dropdown) label("Industry")  exclude(g4))  ///
+    filter(age,      type(range)    label("Age")       exclude(g4))  ///
+    filter(hours,    type(slider)   label("Weekly hours, at least") exclude(g4)) ///
+    link(g1 g2 g3)
+				</code></pre>
+				<aside class="notes">
+					<ul>
+						<li>Every line is in <code>examples.do</code>; step through: load and
+							formats, five graphs, six cards, the build.</li>
+						<li>The formats matter: this dataset ships every numeric variable in
+							<code>%g</code>, which has no fixed decimals, so a tooltip would
+							read 7.767. Format everything the dashboard reads.</li>
+						<li>Five <code>twoway</code> commands with the first word changed and
+							a <code>name()</code>. Cards are new: a statistic, a title, a
+							format, and <code>update()</code>: filters, a brush, or both.</li>
+						<li>The build: a Bootstrap grid, two tabs, filters in a left sidebar,
+							three filter types, <code>exclude(g4)</code> keeping the overall
+							distribution at the full sample, <code>link()</code> naming the
+							three scatters.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<iframe data-src="dashboards/nlsw88-filters.html" data-preload
+					loading="eager" referrerpolicy="no-referrer"
+					title="nlsw88 -- filters, tabs, linked brushing, KPI cards"
+					style="width:1800px; height:900px; border:0;"></iframe>
+				<aside class="notes">
+					<ul>
+						<li>Proves: filters of every type, cards in every update mode, and
+							linked brushing. If the clock is short, do the brush and nothing
+							else.</li>
+						<li><strong>Do:</strong> Industry dropdown, pick Construction, the
+							third entry. Women falls to 29, mean hourly wage to 7.56, and the
+							three scatters thin out.</li>
+						<li><strong>Do, if time:</strong> back to All. Drag Age to 39 to 43:
+							989 women. Drag the hours slider to 41: 390.</li>
+						<li><strong>Do:</strong> reset, then box-select the top-right corner
+							of the first scatter. Selected and Women drop to the count, the
+							mean rises, and the same women light up on the other two scatters.
+							<strong>Say:</strong> the fit lines do not move; that is on the
+							known-issues slide.</li>
+						<li><strong>Do, if time:</strong> Distributions tab. The wage histogram
+							is excluded from every filter on purpose, so set a filter and watch
+							the union and nonunion densities move against a fixed
+							reference.</li>
+						<li><strong>Say:</strong> a filter change clears a brush. Hover any
+							point: the variable labels and the formats you set.</li>
+						<li><strong>Stage:</strong> after clicking in the dashboard the arrow
+							keys go to it, not the deck. Click the dark margin outside the
+							iframe to get the deck back; Esc does not help. All four
+							dashboards load at deck start and keep their state when you step
+							away and back.</li>
+						<li><strong>If asked</strong> about PNG: the toolbar's Save button
+							writes the figures only; the cards, title, filters and tabs are
+							not in the image.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<h3>sp500: the code</h3>
+				<pre class="example-code"><code class="language-stata" data-trim data-line-numbers="1-8|9-21|22-29|30-37" data-examples-lines="161-162,168-169,176-179,190-195,200-203,206-208,213-220,228-235">
+sysuse sp500, clear
+dash clear
+format close open high low change   %9.2f
+format volume                       %12.0fc
+recast double close open high low change
+foreach v of varlist close open high low change {
+    quietly replace `v' = round(`v' * 100) / 100
+}
+dash (rarea low high date, fcolor(gs13) lcolor(gs13))     ///
+     (line  close date),                                  ///
+    name(g1) title("Daily range and close")                   ///
+    ytitle("Index level")                                 ///
+    legend(label(1 "Low to high") label(2 "Close"))       ///
+    hover(volume)
+dash (area volume date, yaxis(2) fcolor(ltblue%60) lcolor(ltblue)) ///
+     (line close date),                                   ///
+    name(g2) title("Close and trading volume")                ///
+    ytitle("Index level") ytitle2("Volume (thousands)")
+dash spike change date,                                   ///
+    name(g3) title("Daily change in the close")               ///
+    ytitle("Change (index points)") yline(0)
+dash kpi min(date),    name(k1) title("First trading day") ///
+    subtitle("in the current range")
+dash kpi max(date),    name(k2) title("Last trading day")  ///
+    subtitle("in the current range")
+dash kpi max(close),   name(k3) title("Highest close")  fmt(%9.2f)   ///
+    subtitle("index level")
+dash kpi mean(volume), name(k4) title("Mean daily volume") fmt(%12.0fc) ///
+    subtitle("thousands of shares")
+dash build,                                                          ///
+    saving("dashboards/sp500-timeseries.html") replace nobrowser      ///
+    title("S&amp;P 500 in 2001")                                         ///
+    subtitle("248 trading days; narrow the dates, then download what remains") ///
+    layout(bs: k1=3 k2=3 k3=3 k4=3 / g1=12 / g2=7 g3=5)               ///
+    filter(date,   type(range)  label("Trading days"))               ///
+    filter(volume, type(slider) label("Daily volume, at least"))     ///
+    csv
+				</code></pre>
+				<aside class="notes">
+					<ul>
+						<li><code>date</code> is already <code>%td</code>; prices get two
+							decimals, volume a comma format. Prices are stored as
+							<code>float</code>, and the CSV writes each number as the browser
+							holds it, so 1236.72 would export as 1236.719970703125: recast to
+							double, rounded to the cent.</li>
+						<li>A range plot takes three variables, y1 y2 x, as in
+							<code>twoway</code>. <code>hover(volume)</code> is
+							<code>dash</code>'s own. <code>yaxis(2)</code> with
+							<code>ytitle2()</code>. The date cards stay dates.</li>
+						<li>The build: column spans, a date range filter, a volume slider,
+							and <code>csv</code>, the last step.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<iframe data-src="dashboards/sp500-timeseries.html" data-preload
+					loading="eager" referrerpolicy="no-referrer"
+					title="sp500 -- dates end to end, secondary axis, CSV download"
+					style="width:1800px; height:900px; border:0;"></iframe>
+				<aside class="notes">
+					<ul>
+						<li>Proves: dates end to end, and the CSV download. If the clock is
+							short, do the download and nothing else.</li>
+						<li><strong>Say:</strong> the axis reads Jan 2001 to Jan 2002. Hover
+							the close line: an ISO date, the low, the high, the volume.</li>
+						<li><strong>Do:</strong> drag Trading days to roughly 2 July to 28
+							September. First and Last trading day re-read as dates as you drag;
+							Highest close falls to 1236.72; Mean daily volume to 12,234.</li>
+						<li><strong>Do:</strong> click Download CSV, to the right of the
+							filters. The browser saves <code>dashboard.csv</code>: header
+							<code>close,date,low,high,volume,change</code>; 59 rows, exactly
+							the trading days in that window; ISO dates; prices to the cent; a
+							missing value is an empty field. This is "how do I get this into
+							my paper", answered.</li>
+						<li><strong>Say:</strong> only the filters narrow the download. A
+							box-selection does not, and a graph's own <code>if</code> does
+							not. It is opt-in, via <code>csv</code>, because it hands every
+							viewer of the page every row.</li>
+						<li><strong>Do, if time:</strong> drag Daily volume to 13,706: 48
+							days, and First and Last become the first and last retained
+							days.</li>
+						<li><strong>Stage:</strong> the date slider needs a real mouse drag.
+							Rehearse it once by hand before the talk; it was verified by value
+							but not by a drag inside the deck. The volume and daily-change
+							figures sit below the fold of the 900-pixel frame: scroll inside
+							the dashboard to show them, or leave them for questions.</li>
+						<li><strong>If asked</strong> about the tick labels: there is an open,
+							cosmetic item in <code>dash</code>'s bug log. The date tick models
+							agree with Stata on about 60% of date ranges when you write
+							<code>xlabel(#N)</code> yourself; a miss picks a different
+							calendar step or end tick, and nothing is drawn in the wrong
+							place. This axis uses the default ticker and reads correctly.</li>
+						<li><strong>If asked</strong> about <code>hover()</code>: a variable
+							named only in <code>hover()</code> is silently left out of the
+							page; <code>volume</code> reaches the tooltip because a graph and a
+							card also use it.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<h3>lifeexp: the code</h3>
+				<pre class="example-code"><code class="language-stata" data-trim data-line-numbers="1-12|13-25|26-33|34-42" data-examples-lines="244-245,247-249,255-257,266-269,273-279,281-286,290-297,306-314">
+sysuse lifeexp, clear
+dash clear
+format lexp        %9.0f
+format gnppc       %12.0fc
+format popgrowth   %9.2f
+generate double lngnppc = ln(gnppc)
+label variable lngnppc "log GNP per capita"
+format lngnppc %9.2f
+egen byte rank_lexp  = rank(lexp),   unique
+egen byte rank_gnppc = rank(-gnppc), unique
+generate str28 label_country = country if rank_lexp &lt;= 6 | rank_gnppc &lt;= 6
+label variable label_country "Country"
+dash (scatter lexp gnppc, colorvar(region) colordiscrete         ///
+                          mlabel(label_country) mlabsize(small) mlabposition(3)), ///
+    name(g1) title("Life expectancy and income, 1998")          ///
+    xscale(log)                                                  ///
+    xtitle("GNP per capita (USD, log scale)")                    ///
+    ytitle("Life expectancy at birth (years)")                   ///
+    hover(country)
+dash (scatter lexp lngnppc, colorvar(region) colordiscrete)      ///
+     (lfitci  lexp lngnppc),                                     ///
+    name(g2) title("Linear in log income, with its 95% band")   ///
+    xtitle("log GNP per capita")                                 ///
+    ytitle("Life expectancy at birth (years)")                   ///
+    hover(country)
+dash kpi count(country),  name(k1) title("Countries")            fmt(%9.0f) ///
+    subtitle("in the current filters")   update(both)
+dash kpi mean(lexp),      name(k2) title("Mean life expectancy") fmt(%9.1f) ///
+    subtitle("years at birth")           update(both)
+dash kpi median(gnppc),   name(k3) title("Median GNP per capita") fmt(%12.0fc) ///
+    subtitle("USD")                      update(both)
+dash kpi mean(popgrowth), name(k4) title("Mean population growth") fmt(%9.2f) ///
+    subtitle("percent per year")         update(both)
+dash build,                                                          ///
+    saving("dashboards/lifeexp-encoding.html") replace nobrowser      ///
+    title("Life expectancy and national income, 1998")               ///
+    subtitle("68 countries, drawn under Stata's stcolor scheme")     ///
+    scheme(stcolor)                                                  ///
+    layout(bs: k1=3 k2=3 k3=3 k4=3 / g1=7 g2=5)                       ///
+    filter(region, type(dropdown) label("Region"))                   ///
+    filter(lexp,   type(range)    label("Life expectancy"))          ///
+    link(g1 g2)
+				</code></pre>
+				<aside class="notes">
+					<ul>
+						<li>GNP per capita runs from 370 to 39,980 dollars, so it is logged
+							on the first figure; the fit on the second is linear in log
+							income, the Preston curve, with its 95% band.</li>
+						<li>Labelling all 68 points overprints the middle, so the label
+							variable is empty except for the six shortest-lived and six richest
+							countries; <code>hover(country)</code> names the rest.</li>
+						<li><code>colorvar(region) colordiscrete</code> colours by region with
+							a key, as in Stata 18. The last step: <code>scheme(stcolor)</code>,
+							one of the twenty <code>dash</code> ships, and Stata 18's default
+							look.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<iframe data-src="dashboards/lifeexp-encoding.html" data-preload
+					loading="eager" referrerpolicy="no-referrer"
+					title="lifeexp -- labels, log axis, colour by region, stcolor scheme"
+					style="width:1800px; height:900px; border:0;"></iframe>
+				<aside class="notes">
+					<ul>
+						<li>Proves: marker labels, a log axis, colour by region, a fit with
+							its band, all under a real StataCorp scheme: white background,
+							the <code>stcolor</code> palette. This is the drop-in claim made
+							visible. If the clock is short, do the box-select only.</li>
+						<li><strong>Do:</strong> Region to North America: 14 countries; the
+							cards read 14, 71.2, 1,873 and 1.69. <strong>Say:</strong> the
+							colour key still lists all three regions; it never changes.</li>
+						<li><strong>Do:</strong> back to All, then box-select the rich,
+							long-lived cluster at the top right of the log figure. 20
+							countries; the same 20 highlight on the right-hand figure; the
+							cards read 20, 77.2, 24,245 and 0.49, because all four follow a
+							brush.</li>
+						<li><strong>Do, if time:</strong> hover Switzerland, the point
+							furthest right: GNP per capita, life expectancy, country.</li>
+						<li><strong>Say:</strong> the band on the right-hand figure stays at
+							the full sample under a filter or a brush.</li>
+						<li><strong>If asked</strong> what differs from <code>twoway</code>
+							under <code>stcolor</code>: the <code>colorvar()</code> key
+							(a labelled categorical key here, a numeric colour axis in
+							<code>twoway</code>), the log-axis tick labels (powers of ten here,
+							10,000 and 20,000 there), the <code>colorvar()</code> palette (the
+							scheme's p1 to p3 here, <code>twoway</code>'s colour ramp there),
+							and title alignment (left here, centred there). Background, grid,
+							palette, labels and axis titles match.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<h3>census: the code</h3>
+				<pre class="example-code"><code class="language-stata" data-trim data-line-numbers="19-43|44-62|63-66|67-76" data-examples-lines="323-324,326-328,333-345,356-361,363-368,370-375,379-385,397-403,406-411,413-418,421-424,431-440">
+sysuse census, clear
+dash clear
+format region  %9.0f
+format medage  %9.2f
+format pop     %12.0fc
+generate double drate  = death    / pop * 1000
+generate double mrate  = marriage / pop * 1000
+generate double dvrate = divorce  / pop * 1000
+generate double urban  = popurban / pop * 100
+generate double old    = pop65p   / pop * 100
+generate double young  = (poplt5 + pop5_17) / pop * 100
+label variable drate  "Deaths per 1,000 residents"
+label variable mrate  "Marriages per 1,000 residents"
+label variable dvrate "Divorces per 1,000 residents"
+label variable urban  "Urban share of the population (%)"
+label variable old    "Share aged 65 and older (%)"
+label variable young  "Share under 18 (%)"
+format drate mrate dvrate urban old young %9.1f
+dash (scatter dvrate mrate, msize(medium)),                          ///
+    name(g1) title("Divorces and marriages")                          ///
+    xscale(log) xsize(10) ysize(4)                                   ///
+    xtitle("Marriages per 1,000 residents (log scale)")              ///
+    ytitle("Divorces per 1,000 residents")                           ///
+    hover(state)
+dash (scatter drate old, msize(medium)),                             ///
+    name(g2) title("Deaths and the share aged 65 and older")          ///
+    xsize(10) ysize(4)                                               ///
+    xtitle("Share aged 65 and older (%)")                            ///
+    ytitle("Deaths per 1,000 residents")                             ///
+    hover(state)
+dash (scatter young medage, msize(medium)),                          ///
+    name(g3) title("Share under 18 and median age")                   ///
+    xsize(10) ysize(4)                                               ///
+    xtitle("Median age (years)")                                     ///
+    ytitle("Share under 18 (%)")                                     ///
+    hover(state)
+dash (scatter urban pop, msize(medium)                               ///
+                         mlabel(state2) mlabsize(small) mlabposition(3)), ///
+    name(g4) title("Urban share and population")                      ///
+    xscale(log) xsize(10) ysize(4)                                   ///
+    xtitle("Population (log scale)")                                 ///
+    ytitle("Urban share of the population (%)")                      ///
+    hover(state)
+dash (scatter drate medage, msize(medium))                           ///
+     (lfit    drate medage),                                         ///
+    name(g5) title("Deaths and median age, by census region")         ///
+    by(region, cols(2)) xlabel(#5) ylabel(#5) xsize(10) ysize(4)      ///
+    xtitle("Median age (years)")                                     ///
+    ytitle("Deaths per 1,000 residents")                             ///
+    hover(state)
+dash (scatter medage old, msize(medium))                             ///
+     (lowess  medage old),                                           ///
+    name(g6) title("Median age and the share aged 65 and older")      ///
+    xtitle("Share aged 65 and older (%)")                            ///
+    ytitle("Median age (years)")                                     ///
+    hover(state)
+dash (scatter medage young, msize(medium))                           ///
+     (qfitci  medage young),                                         ///
+    name(g7) title("Median age and the share under 18")               ///
+    xtitle("Share under 18 (%)")                                     ///
+    ytitle("Median age (years)")                                     ///
+    hover(state)
+dash kpi count(state), name(k1) title("States")            fmt(%9.0f) ///
+    subtitle("in the current filters")   update(both)
+dash kpi mean(medage), name(k2) title("Mean median age")   fmt(%9.1f) ///
+    subtitle("years")                    update(both)
+dash build,                                                          ///
+    saving("dashboards/census-tabs.html") replace nobrowser           ///
+    title("The 50 states in 1980")                                   ///
+    subtitle("Census extract, drawn under Stata's economist scheme") ///
+    scheme(economist)                                                ///
+    layout(bs)                                                       ///
+    tabs(Rates: g1 g2 g3 g4 / By region: g5 / Age structure: k1 k2 g6 g7) ///
+    filter(region, type(dropdown) label("Census region"))            ///
+    filter(medage, type(range)    label("Median age"))               ///
+    link(g1 g2 g3 g4 g5)
+				</code></pre>
+				<aside class="notes">
+					<ul>
+						<li>The census counts become rates per 1,000 residents and shares of the
+							population. Step through: setup, four scatters, the faceted figure, two
+							smoothers, two cards, the build.</li>
+						<li>Nevada married 142 couples per 1,000 residents in 1980, ten times any
+							other state, so the marriage axis is logged. <code>xsize(10)
+							ysize(4)</code> are <code>twoway</code>'s own options; here they set a
+							figure's proportions so a tab's two rows fit one screen.</li>
+						<li><code>by(region, cols(2))</code>: a panel per census region, with
+							<code>lfit</code> fitted in each. <code>xlabel(#5) ylabel(#5)</code>
+							are what put the four panels on one scale; without <code>#N</code>
+							each panel takes its own range.</li>
+						<li><code>lowess</code> and <code>qfitci</code>: two more of
+							<code>twoway</code>'s smoothers, drawn by <code>dash</code>'s own
+							implementation of Stata's estimator.</li>
+						<li>The build: <code>scheme(economist)</code>, three tabs, and
+							<code>link()</code> naming the four scatters and the faceted figure. A
+							tab's grid is equal cells, so four graphs make a two by two.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section>
+				<iframe data-src="dashboards/census-tabs.html" data-preload
+					loading="eager" referrerpolicy="no-referrer"
+					title="census -- three tabs, four linked scatters, by() facets on one scale, economist scheme"
+					style="width:1800px; height:900px; border:0;"></iframe>
+				<aside class="notes">
+					<ul>
+						<li>Proves: three tabs, one selection shared by four graphs and four
+							facet panels on one scale, <code>lowess</code> and <code>qfitci</code>,
+							all under <code>economist</code>. If the clock is short, do the brush
+							and the tab switch and nothing else.</li>
+						<li><strong>Say:</strong> the blue-grey is the economist scheme; the
+							Rates tab is four scatters in two rows.</li>
+						<li><strong>Do:</strong> hover the lone point at the far right of
+							Divorces and marriages: Nevada.</li>
+						<li><strong>Do:</strong> box-select tool, then a box over the top right
+							of Urban share and population, the big urban states. The same states
+							light up on the other three scatters at once.</li>
+						<li><strong>Do:</strong> keep the selection and click By region: the same
+							states are highlighted inside their own panels, four panels on one scale,
+							a fitted line in each.</li>
+						<li><strong>Do:</strong> Census region to West: 13 states everywhere, and
+							three of the four panels empty, as a region filter should. Back to All.</li>
+						<li><strong>Do, if time:</strong> Age structure. States and Mean median
+							age follow the brush too; with California, New York and Texas selected
+							they read 3 and 30.0. Below them, <code>lowess</code> and
+							<code>qfitci</code> with its band.</li>
+						<li><strong>If asked</strong> why the four scatters are a two by two and
+							not three over one: a tab's grid is equal cells, ceil(sqrt(n))
+							columns, and Bootstrap spans do not reach inside a tab. Outside the
+							tabs the three-over-one shape works, but anything not in a tab is
+							drawn below the whole tab strip, out of a 900-pixel frame.</li>
+						<li><strong>If asked</strong> about <code>exclude()</code>: it cannot hold
+							back a graph that is in a link group, because that graph draws from the
+							group's one shared source; the region filter reaches the panels for that
+							reason.</li>
+					</ul>
+				</aside>
+			</section>
+		</section>
+
+		<!-- CLOSING/WRAP UP -->
+		<section>
+			<section data-autoslide="2000">
+				<h2>Wrapping Up</h2>
+			</section>
+
+			<section>
+				<h3>Known issues and limitations</h3>
+				<ul class="tight">
+					<li>Filters and brushes affect data but not computed layers (e.g., fitted lines)</li>
+					<li>Four plot types are not currently implemented: contour, contourline, rpcap, and rpspike</li>
+					<li>Not every option on every graph is fully supported</li>
+					<li>Non-supported options should not prevent using the command, but limit control of the aesthetics</li>
+					<li>There will be inaccuracies in the helpfile during development and until there is time to thoroughly verify what is supported</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>Server mode addresses the first issue</li>
+						<li>I've not looked into the reason why those graph types aren't implemented yet, but also don't imagine they are the first graphs that everyone is generating regularly</li>
+						<li>Some of the additional axes and numbered titles are not implemented among others.</li>
+						<li>One of the design decisions I made that went into the planning was to allow options that aren't currently supported, but print a message to let the user know.</li>
+						<li>This way the command still provides some utility, even if it doesn't provide full support for all of the options available in Stata</li>
+						<li>The number of potential options makes it challenging, even for AI tools to fully test and verify everything in a reasonable amount of time</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section data-autoslide="2000">
+				<h2>Lessons Learned</h2>
+			</section>
+
+			<section>
+				<ul>
+					<li><b>ALL AI CODING ASSISTANTS LIE</b></li>
+					<li><b>ALL AI CODING ASSISTANTS WILL TAKE THE SHORTEST PATH POSSIBLE TO "COMPLETE" A TASK</b></li>
+					<li>Task complexity and accurate performance are inversely related</li>
+					<li>The size of the scope of a task is also inversely related to accurate performance</li>
+					<li>Planning work for an AI coding assistant is more similar to programming than planning work for a human</li>
+					<li>The quality of the work varies significantly across the AI models</li>
+					<li>The quality also varies significantly across the companies developing the AI models</li>
+				</ul>
+				<aside class="notes">
+					<ul>
+						<li>The first two points are inevitable and unavoidable.</li>
+						<li>Reinforcement learning uses an incentive to do anything to receive the "reward."  Sometimes that means reporting that work is complete even if it isn't.  Other times it can look like the work is complete, but it is due to hardcoded values being used instead of arguments passed to parameters.</li>
+						<li>Expect there to be a non-trivial number of errors or omissions and you'll likely never be disappointed.</li>
+						<li>AI coding assistants can perform impressively well on tightly scoped, well sequenced, and less complex tasks.</li>
+						<li>This means the planning process is vital to the success of your project.</li>
+						<li>The most costly models do tend to perform better across the board, but some of the least costly models perform equally well if the task is well-suited for them.</li>
+						<li>Just like not every model performs equally well, there is also a non-trivial difference in quality between companies building these tools.</li>
+					</ul>
+				</aside>
+			</section>
+
+			<section data-autoslide="2000">
+				<h2>Recommendations for using AI coding assistants with Stata</h2>
+			</section>
+
+			<section>
+				<ol>
+					<li>Plan for the AI coding assistant to be deceptive</li>
+					<li>Take advantage of retrieval augmented generation</li>
+					<li>Use a system prompt, or file, to define behavioral patterns you want the tool to exhibit</li>
+					<li>Spend the majority of your time making sure you have a well-developed plan</li>
+					<li>Make sure each discrete task in the plan is tightly scoped and that tasks are sequenced in a logical order</li>
+					<li>Use the most advanced model you can to build the planning documents</li>
+					<li>Use less advanced models to implement the plans and keep costs manageable</li>
+					<li>Use the most capable model to check the work of less advanced models</li>
+					<li>Use models from a competitor to check the work of your preferred coding assistant</li>
+					<li>Prepare to spend a significant amount of your time testing code and providing additional clarifying instructions</li>
+					<li>Assume you will need several iterations of plan development and execution for complex tasks to complete them</li>
+				</ol>
+				<aside class="notes">
+					<p><b>Be sure to explain retrieval augmented generation</b></p>
+					<ul>
+						<li>If you plan for it to happen, you may be more likely to identify common deceptive practices which you can use to modify the system prompt.</li>
+						<li>Stata and the user community create exceptional documentation.  Using the documentation allows the model to fill in a lot of gaps it has from its training.</li>
+						<li>I make sure to include information about commenting style and other aspects of the programming that I want the model to follow at all times</li>
+						<li>The plan is one of, if not the, most critical factors for the success of your project.</li>
+						<li>If the plan doesn't break things down into small enough tasks, force the tool to do that to increase the likelihood of success the first time around</li>
+						<li>The most advanced models with the greatest effort will produce better plans, but may be overkill for many coding tasks if the plans are well-developed</li>
+						<li>Sometimes the models with the least capacity are all you need.</li>
+						<li>However, you should use models with greater capacity to automate checking the work of models with lesser capacity.  They will be more likely to catch things that the less capable models will consistently miss.</li>
+						<li>Just because a competitor's model doesn't perform as well at coding, doesn't mean it won't perform well at finding bugs or vulnerabilities</li>
+						<li>Think of AI coding assistants like incredibly capable undergrad/first year grad students.  Just because they have the coding skill set, doesn't mean they are aware of common knowledge in the field or will infer things that are obvious with experience.  You'll have to provide those instructions for them to learn how to figure it out.</li>
+						<li>I have yet to have an AI coding assistant fully implement everything in a single plan or develop a single plan that covers everything it will need for complex tasks.  I assume the first plan will provide a foundation with multiple cracks that need to be fixed prior to framing a house on it and that multiple plans will be needed before that house is move-in ready.</li>
+					</ul>
+				</aside>
+			</section>
+		</section>
+
+	</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/dist/reveal.js"
+	onerror="document.write('<script src=&quot;vendor/reveal.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/zoom/zoom.js"
+	onerror="document.write('<script src=&quot;vendor/plugin/zoom/zoom.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/notes/notes.js"
+	onerror="document.write('<script src=&quot;vendor/plugin/notes/notes.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/search/search.js"
+	onerror="document.write('<script src=&quot;vendor/plugin/search/search.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/markdown/markdown.js"
+	onerror="document.write('<script src=&quot;vendor/plugin/markdown/markdown.js&quot;><\/script>')"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.2.1/plugin/highlight/highlight.js"
+	onerror="document.write('<script src=&quot;vendor/plugin/highlight/highlight.js&quot;><\/script>')"></script>
+<script>
+
+	// Also available as an ES module, see:
+	// https://revealjs.com/initialization/
+	//
+	// width/height/margin/minScale/maxScale diverge from previous decks' defaults
+	// (960x700) on purpose: this deck embeds interactive dashboards in iframes, and an
+	// in-slide iframe's viewport is Reveal's *config* space, independent of the actual
+	// display size (verified 2026-09-18). 1920x1080 gives embedded dashboards a usable
+	// viewport; maxScale: 1.0 stops a dashboard being upscaled into blur on a smaller
+	// projector. preloadIframes loads every iframe within viewDistance up front;
+	// with viewDistance below, that is all of them, so filter state survives
+	// stepping away from a dashboard and back.
+	Reveal.initialize({
+		controls: true,
+		progress: true,
+		center: true,
+		hash: true,
+
+		width: 1920,
+		height: 1080,
+		margin: 0.02,
+		minScale: 0.2,
+		maxScale: 1.0,
+		preloadIframes: true,
+
+		// Reveal unloads an iframe (removes src, restores data-src) once its slide is
+		// farther than viewDistance from the current one, and reloads it on approach.
+		// At the default 3, a jump from a dashboard slide to the title slide and back
+		// reset every filter and re-rendered the dashboard (verified 2026-09-25, task
+		// 04-03). 40 exceeds the deck's slide count (27 including the optional detail
+		// slides), so all four dashboards load once, at start, and keep their state
+		// for the whole talk. Reference: https://revealjs.com/config/
+		viewDistance: 40,
+
+		// Learn about plugins: https://revealjs.com/plugins/
+		plugins: [ RevealZoom, RevealNotes, RevealSearch, RevealMarkdown, RevealHighlight ]
+	});
+
+</script>
+
+</body>
+</html>
