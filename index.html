@@ -122,7 +122,7 @@
 					<li>Building directly in Stata would be less useful to more users</li>
 					<li>Java vs <a href="https://pyviz.org/tools.html" target="_blank">Python</a></li>
 					<li><a href="https://streamlit.io/" target="_blank">Streamlit</a> vs <a href="https://bokeh.org/" target="_blank">Bokeh</a></li>
-					<li>Mirror <code>twoway</code>'s behavior as close as possible</li>
+					<li>Mirror <code>twoway</code>'s syntax and behavior as close as possible</li>
 					<li>Provide some additional features common to dashboards</li>
 					<li>Identify which AI Coding assistant would provide the best results</li>
 				</ul>
@@ -173,19 +173,19 @@
 				<h3>How and What to translate</h3>
 				<ul class="tight">
 					<li>Data could be translated using <a href="https://wbuchanan.github.io/StataJSON/" target="_blank"><code>jsonio</code></a> or the <a href="https://www.stata.com/python/api19/" target="_blank">Stata Function Interface</a></li>
-					<li>Parsing Stata commands would likely be easier in Stata</li>
+					<li>Parsing Stata commands would be easier in Stata</li>
 					<li>Not everything needed a literal translation (e.g., <code>if/in</code> expressions)</li>
 					<li>The biggest translation task would be the graph type declarations and their options</li>
 					<li>The first step was to develop and execute the plan, followed by creating and executing additional plans</li>
 				</ul>
 				<aside class="notes">
 					<ul>
+						<li><b>ALL AI CODING ASSISTANTS LIE</b></li>
 						<li>Unlike many language translation tasks, this work required translating across a couple of languages simultaneously.</li>
 						<li>Data would be translated directly into JavaScript Object Notation, while everything about how to use the data would be translated into Python.</li>
 						<li>The Python library would then generate the HTML, SVG, and JavaScript to render the visualizations.</li>
 						<li>Programming with an AI coding assistant starts the same way hand coding should start: with a clear and well scoped plan.</li>
 						<li>The plan would provide the on-going instructions for the AI coding assistant to follow.</li>
-						<li><b>ALL AI CODING ASSISTANTS LIE</b></li>
 						<li>AI coding assistants behave the way the fundamental assumptions in economic theory say people behave</li>
 						<li>Because their training process is designed to maximize their "reward," they will find the most efficient way possible to obtain the reward, including saying that work is completed even if it isn't</li>
 					</ul>
